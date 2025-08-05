@@ -39,6 +39,115 @@ use alloc::string::ToString;
 pub use pyo3::{PyAny, PyObject};
 
 // ============================================================================
+// GENERIC TRAITS FOR PYTHON OPERATIONS
+// ============================================================================
+
+/// Trait for types that can be used as string-like parameters
+/// 
+/// This allows functions to accept both &str and String seamlessly
+pub trait AsStrLike {
+    fn as_str_like(&self) -> &str;
+}
+
+impl AsStrLike for str {
+    fn as_str_like(&self) -> &str {
+        self
+    }
+}
+
+impl AsStrLike for String {
+    fn as_str_like(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl AsStrLike for &str {
+    fn as_str_like(&self) -> &str {
+        self
+    }
+}
+
+impl AsStrLike for &String {
+    fn as_str_like(&self) -> &str {
+        self.as_str()
+    }
+}
+
+/// Trait for types that can be converted to owned strings
+/// 
+/// This is useful for return values that need to be owned
+pub trait IntoOwnedString {
+    fn into_owned_string(self) -> String;
+}
+
+impl IntoOwnedString for &str {
+    fn into_owned_string(self) -> String {
+        self.to_string()
+    }
+}
+
+impl IntoOwnedString for String {
+    fn into_owned_string(self) -> String {
+        self
+    }
+}
+
+/// Trait for types that can be used as path-like parameters
+/// 
+/// This allows path functions to work with various string types
+pub trait AsPathLike {
+    fn as_path_like(&self) -> &str;
+}
+
+impl<T: AsStrLike> AsPathLike for T {
+    fn as_path_like(&self) -> &str {
+        self.as_str_like()
+    }
+}
+
+/// Trait for collections that can be used as argument lists
+/// 
+/// This allows subprocess functions to accept various collection types
+pub trait AsArgList<T> {
+    fn as_arg_list(&self) -> Vec<&str>;
+}
+
+impl<T> AsArgList<T> for Vec<T> 
+where
+    T: AsRef<str>,
+{
+    fn as_arg_list(&self) -> Vec<&str> {
+        self.iter().map(|s| s.as_ref()).collect()
+    }
+}
+
+impl<T> AsArgList<T> for &[T] 
+where
+    T: AsRef<str>,
+{
+    fn as_arg_list(&self) -> Vec<&str> {
+        self.iter().map(|s| s.as_ref()).collect()
+    }
+}
+
+/// Trait for environment-like collections (key-value pairs)
+pub trait AsEnvLike<K, V> {
+    fn as_env_like(&self) -> HashMap<&str, &str>;
+}
+
+impl<K, V> AsEnvLike<K, V> for HashMap<K, V>
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
+    fn as_env_like(&self) -> HashMap<&str, &str> {
+        self.iter()
+            .map(|(k, v)| (k.as_ref(), v.as_ref()))
+            .collect()
+    }
+}
+
+// ============================================================================
 // PYTHON BUILT-IN FUNCTIONS
 // ============================================================================
 
@@ -91,6 +200,46 @@ where
     T: Len,
 {
     obj.len()
+}
+
+/// Python dict() function - creates a new dictionary (generic version)
+/// 
+/// # Arguments
+/// * `pairs` - Key-value pairs to initialize the dictionary with
+/// 
+/// # Returns
+/// A new HashMap containing the provided key-value pairs
+pub fn dict<K, V>(pairs: HashMap<K, V>) -> HashMap<K, V> 
+where
+    K: std::hash::Hash + Eq,
+{
+    pairs
+}
+
+/// Python dict() function with environment merging (generic version)
+/// 
+/// This merges environment-like collections with additional key-value pairs
+pub fn dict_with_env<E, K, V>(env: E, additional: HashMap<K, V>) -> HashMap<K, V>
+where
+    E: AsEnvLike<K, V>,
+    K: std::hash::Hash + Eq + for<'a> From<&'a str>,
+    V: for<'a> From<&'a str>,
+{
+    let env_map = env.as_env_like();
+    let mut result: HashMap<K, V> = env_map.into_iter()
+        .map(|(k, v)| (K::from(k), V::from(v)))
+        .collect();
+    result.extend(additional);
+    result
+}
+
+/// Simplified dict creation from key-value pairs
+pub fn dict_from_pairs<K, V, I>(pairs: I) -> HashMap<K, V>
+where
+    K: std::hash::Hash + Eq,
+    I: IntoIterator<Item = (K, V)>,
+{
+    pairs.into_iter().collect()
 }
 
 // ============================================================================

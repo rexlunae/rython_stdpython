@@ -4,7 +4,8 @@
 //! spawning new processes and connecting to their input/output/error pipes.
 
 use std::process::Command;
-use crate::PyException;
+use std::collections::HashMap;
+use crate::{PyException, AsStrLike, AsPathLike, AsEnvLike};
 
 /// Result of a subprocess run
 /// 
@@ -44,6 +45,27 @@ impl CompletedProcess {
     }
 }
 
+/// subprocess.run - run a command (generic version using traits)
+/// 
+/// # Arguments
+/// * `args` - Command and arguments to run (any collection of string-like types)
+/// * `cwd` - Working directory for the command (optional path-like type)
+/// 
+/// # Returns
+/// A CompletedProcess instance with the result
+pub fn run_mixed_args<A, S, C>(args: A, cwd: Option<C>) -> Result<CompletedProcess, PyException> 
+where
+    A: IntoIterator<Item = S>,
+    S: AsStrLike,
+    C: AsPathLike,
+{
+    // Convert to owned strings first to avoid lifetime issues
+    let owned_args: Vec<String> = args.into_iter().map(|s| s.as_str_like().to_string()).collect();
+    let str_args: Vec<&str> = owned_args.iter().map(|s| s.as_str()).collect();
+    let str_cwd = cwd.as_ref().map(|c| c.as_path_like());
+    run_with_env(str_args, str_cwd, None)
+}
+
 /// subprocess.run - run a command
 /// 
 /// # Arguments
@@ -60,6 +82,56 @@ impl CompletedProcess {
 /// // result.returncode should be 0 for success
 /// ```
 pub fn run(args: Vec<&str>, cwd: Option<&str>) -> Result<CompletedProcess, PyException> {
+    run_with_env(args, cwd, None)
+}
+
+/// subprocess.run with environment variables - run a command with custom environment (generic)
+/// 
+/// # Arguments
+/// * `args` - Command and arguments to run (any collection of string-like types)
+/// * `cwd` - Working directory for the command (optional path-like type)
+/// * `env` - Environment variables for the command (optional env-like type)
+/// 
+/// # Returns
+/// A CompletedProcess instance with the result
+pub fn run_with_env_generic<A, S, C, E, K, V>(
+    args: A, 
+    cwd: Option<C>, 
+    env: Option<E>
+) -> Result<CompletedProcess, PyException> 
+where
+    A: IntoIterator<Item = S>,
+    S: AsStrLike,
+    C: AsPathLike,
+    E: AsEnvLike<K, V>,
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
+    // Convert to owned strings first to avoid lifetime issues
+    let owned_args: Vec<String> = args.into_iter().map(|s| s.as_str_like().to_string()).collect();
+    let str_args: Vec<&str> = owned_args.iter().map(|s| s.as_str()).collect();
+    let str_cwd = cwd.as_ref().map(|c| c.as_path_like());
+    let env_map = env.as_ref().map(|e| {
+        let env_like = e.as_env_like();
+        let mut hash_map = HashMap::new();
+        for (k, v) in env_like {
+            hash_map.insert(k.to_string(), v.to_string());
+        }
+        hash_map
+    });
+    run_with_env(str_args, str_cwd, env_map.as_ref())
+}
+
+/// subprocess.run with environment variables - run a command with custom environment
+/// 
+/// # Arguments
+/// * `args` - Command and arguments to run
+/// * `cwd` - Working directory for the command (optional)
+/// * `env` - Environment variables for the command (optional)
+/// 
+/// # Returns
+/// A CompletedProcess instance with the result
+pub fn run_with_env(args: Vec<&str>, cwd: Option<&str>, env: Option<&HashMap<String, String>>) -> Result<CompletedProcess, PyException> {
     if args.is_empty() {
         return Err(crate::value_error("Empty command"));
     }
@@ -74,6 +146,11 @@ pub fn run(args: Vec<&str>, cwd: Option<&str>) -> Result<CompletedProcess, PyExc
     // Set working directory if provided
     if let Some(dir) = cwd {
         command.current_dir(dir);
+    }
+    
+    // Set environment variables if provided
+    if let Some(env_vars) = env {
+        command.envs(env_vars);
     }
     
     // Execute the command
@@ -142,6 +219,22 @@ pub fn run_with_output(args: Vec<&str>, cwd: Option<&str>, capture_output: bool)
             }
         }
     }
+}
+
+/// subprocess.call - run command and return exit code (generic version)
+/// 
+/// # Arguments
+/// * `args` - Command and arguments to run (any collection of string-like types)
+/// 
+/// # Returns
+/// The exit code of the process
+pub fn call_generic<A, S>(args: A) -> Result<i32, PyException>
+where
+    A: IntoIterator<Item = S>,
+    S: AsStrLike,
+{
+    let result = run_mixed_args(args, None::<&str>)?;
+    Ok(result.returncode)
 }
 
 /// subprocess.call - run command and return exit code
