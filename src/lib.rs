@@ -1026,6 +1026,30 @@ pub fn runtime_error(message: &str) -> PyException {
 }
 
 // ============================================================================
+// PYTHON STANDARD LIBRARY MODULES
+// ============================================================================
+
+/// Python Standard Library modules
+pub mod stdlib;
+
+// Re-export stdlib modules at the top level for convenience
+pub use stdlib::sys;
+pub use stdlib::os; 
+pub use stdlib::subprocess;
+
+/// Placeholder for ensure_venv_ready function (from pyperformance or similar)
+/// This is not a standard Python built-in, so we provide a stub that returns dummy values
+pub fn ensure_venv_ready(kind: &str) -> (String, String) {
+    // In a real implementation, this would set up a virtual environment
+    // For now, return placeholder values
+    (format!("/tmp/venv_{}", kind), "python".to_string())
+}
+
+/// Python special variables
+pub const __file__: &str = "script.py";
+pub const __name__: &str = "__main__";
+
+// ============================================================================
 // OS-DEPENDENT FUNCTIONS (std feature only)
 // ============================================================================
 
