@@ -1,6 +1,6 @@
 [package]
 name = "stdpython"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -14,5 +14,5 @@ nostd = ["hashbrown", "heapless"]
 pyo3 = {version = "0.25", features=["auto-initialize"], optional = true}
 
 # nostd-compatible dependencies
-hashbrown = { version = "0.14", optional = true }
+hashbrown = { version = "0.15", optional = true }
 heapless = { version = "0.8", optional = true }
