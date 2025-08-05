@@ -33,16 +33,6 @@ use alloc::{vec::Vec, string::String, format};
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
 
-// Conditional type aliases for compatibility
-#[cfg(feature = "std")]
-type ParseIntError = std::num::ParseIntError;
-#[cfg(not(feature = "std"))]
-type ParseIntError = core::num::ParseIntError;
-
-#[cfg(feature = "std")]
-type ParseFloatError = std::num::ParseFloatError;
-#[cfg(not(feature = "std"))]
-type ParseFloatError = core::num::ParseFloatError;
 
 // PyO3 only available with std
 #[cfg(feature = "std")]
