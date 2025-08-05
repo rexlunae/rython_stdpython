@@ -10,6 +10,10 @@
 //! - `nostd`: No-std compatible version for embedded systems
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// Allow non-conventional naming for Python API compatibility
+#![allow(non_upper_case_globals)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
 // Import conditional on std feature
 #[cfg(feature = "std")]
