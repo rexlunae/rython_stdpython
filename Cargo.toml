@@ -1,11 +1,18 @@
 [package]
 name = "stdpython"
-version = "0.1.0"
-edition = "2021"
+version = "1.0.0"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["std"]
+std = ["pyo3"]
+nostd = ["hashbrown", "heapless"]
+
 [dependencies]
-pyo3 = {version = "0.20", features=["auto-initialize",]}
-#python-mod = "0.1.0"
-python-mod = {path = "../python-mod-rs", version = "0.1.4"}
+pyo3 = {version = "0.25", features=["auto-initialize"], optional = true}
+
+# nostd-compatible dependencies
+hashbrown = { version = "0.14", optional = true }
+heapless = { version = "0.8", optional = true }
