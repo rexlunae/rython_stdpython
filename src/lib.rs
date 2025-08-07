@@ -1302,6 +1302,7 @@ pub use json::{
     dump_py, dump_wrapper,
 };
 
+#[cfg(feature = "std")]
 pub use os::{
     // OS functions
     execv_mixed_py, execv_mixed_wrapper,
@@ -1311,6 +1312,7 @@ pub use os::{
     chdir_py, chdir_wrapper,
 };
 
+#[cfg(feature = "std")]
 pub use os::path::{
     // OS path functions
     dirname_py, dirname_wrapper,
