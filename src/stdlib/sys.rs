@@ -62,7 +62,7 @@ python_function! {
     pub fn exit<T>(code: T) -> !
     where [T: Into<ExitCode>]
     [signature: (code)]
-    [concrete_types: (i32) -> !]
+    [concrete_types: (String) -> !]
     {
         let exit_code = code.into();
         match exit_code {

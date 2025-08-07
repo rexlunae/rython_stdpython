@@ -1201,6 +1201,10 @@ pub use stdlib::subprocess;
 #[cfg(feature = "std")]
 pub use stdlib::sysconfig;
 #[cfg(feature = "std")]
+pub use stdlib::sysconfig::{
+    is_python_build_py, is_python_build_wrapper,
+};
+#[cfg(feature = "std")]
 pub use stdlib::venv;
 pub use stdlib::math;
 #[cfg(feature = "std")]
@@ -1318,6 +1322,8 @@ pub use os::path::{
     dirname_py, dirname_wrapper,
     basename_py, basename_wrapper,
     join_py, join_wrapper,
+    join3_py, join3_wrapper,
+    join_many_py, join_many_wrapper,
     exists_py, exists_wrapper,
     isfile_py, isfile_wrapper,
     isdir_py, isdir_wrapper,

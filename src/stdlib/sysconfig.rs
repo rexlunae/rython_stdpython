@@ -5,7 +5,7 @@
 //!
 //! Note: This module is only available with the `std` feature enabled.
 
-use crate::PyException;
+use crate::{PyException, python_function};
 use std::collections::HashMap;
 
 /// sysconfig.get_config_vars - get configuration variables
@@ -128,5 +128,17 @@ pub fn get_platform() -> String {
         }
     } else {
         "unknown-platform".to_string()
+    }
+}
+
+python_function! {
+    /// sysconfig.is_python_build - check if this is a Python build
+    pub fn is_python_build() -> bool
+    [signature: ()]
+    [concrete_types: () -> bool]
+    {
+        // For compiled Python code, this is not a Python build
+        // Return false as the code has been compiled to Rust
+        false
     }
 }

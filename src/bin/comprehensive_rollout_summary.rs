@@ -161,7 +161,7 @@ fn test_os_functions() -> i32 {
     }
     
     // Path functions should always work
-    if join_wrapper(vec!["home".to_string(), "user".to_string()]).contains("home") { success += 1; }
+    if join_wrapper("home".to_string(), "user".to_string()).contains("home") { success += 1; }
     if !exists_wrapper("/nonexistent/path/hopefully".to_string()) { success += 1; }
     if !isfile_wrapper("/nonexistent/file".to_string()) { success += 1; }
     if !isdir_wrapper("/nonexistent/dir".to_string()) { success += 1; }

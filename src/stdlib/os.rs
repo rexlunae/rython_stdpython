@@ -199,7 +199,34 @@ pub mod path {
     
     python_function! {
         /// os.path.join - join path components
-        pub fn join<I, P>(components: I) -> String
+        pub fn join<P1, P2>(path1: P1, path2: P2) -> String
+        where [P1: AsPathLike, P2: AsPathLike]
+        [signature: (path1, path2)]
+        [concrete_types: (String, String) -> String]
+        {
+            let mut path = PathBuf::from(path1.as_path_like());
+            path.push(path2.as_path_like());
+            path.to_string_lossy().to_string()
+        }
+    }
+    
+    python_function! {
+        /// os.path.join - join path components (3 arguments version)
+        pub fn join3<P1, P2, P3>(path1: P1, path2: P2, path3: P3) -> String
+        where [P1: AsPathLike, P2: AsPathLike, P3: AsPathLike]
+        [signature: (path1, path2, path3)]
+        [concrete_types: (String, String, String) -> String]
+        {
+            let mut path = PathBuf::from(path1.as_path_like());
+            path.push(path2.as_path_like());
+            path.push(path3.as_path_like());
+            path.to_string_lossy().to_string()
+        }
+    }
+    
+    python_function! {
+        /// os.path.join - join path components (variable arguments version)
+        pub fn join_many<I, P>(components: I) -> String
         where [I: IntoIterator<Item = P>, P: AsPathLike]
         [signature: (components)]
         [concrete_types: (Vec<String>) -> String]
