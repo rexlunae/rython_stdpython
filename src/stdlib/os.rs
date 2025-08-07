@@ -149,6 +149,17 @@ pub static environ: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     std::env::vars().collect()
 });
 
+/// os.name - operating system name
+/// 
+/// This provides the name of the operating system, similar to Python's os.name.
+pub static name: LazyLock<&'static str> = LazyLock::new(|| {
+    if cfg!(target_os = "windows") {
+        "nt"
+    } else {
+        "posix"
+    }
+});
+
 // Compatibility aliases for generated code
 // Note: Functions are already public in this module, no need to re-export
 
@@ -160,6 +171,9 @@ pub mod path {
 
     use std::path::{Path, PathBuf};
     use crate::{PyException, AsPathLike};
+    
+    /// os.path.sep - path separator for the current platform
+    pub static sep: &str = if cfg!(target_os = "windows") { "\\" } else { "/" };
 
     /// os.path.dirname - return directory name of pathname (generic version)
     /// 
@@ -226,6 +240,24 @@ pub mod path {
         R::from(path.to_string_lossy().to_string())
     }
     
+    /// os.path.join - variadic version for compatibility with Python's os.path.join
+    /// 
+    /// This function accepts individual arguments like Python's os.path.join(a, b, c, ...)
+    /// 
+    /// # Arguments
+    /// * `first` - First path component
+    /// * `rest` - Additional path components (variadic)
+    /// 
+    /// # Returns
+    /// The joined path as a String
+    pub fn join_paths<P: AsPathLike>(first: P, rest: &[P]) -> String {
+        let mut path = PathBuf::from(first.as_path_like());
+        for component in rest {
+            path.push(component.as_path_like());
+        }
+        path.to_string_lossy().to_string()
+    }
+    
     /// os.path.exists - check if path exists (generic version)
     /// 
     /// # Arguments
@@ -273,5 +305,30 @@ pub mod path {
         std::fs::canonicalize(path.as_ref())
             .map(|p| p.to_string_lossy().to_string())
             .map_err(|e| crate::runtime_error(format!("Failed to get absolute path for {}: {}", path.as_ref(), e)))
+    }
+    
+    /// os.path.relpath - return relative path
+    /// 
+    /// # Arguments
+    /// * `path` - Path to make relative
+    /// * `start` - Start directory for relative path calculation (optional)
+    /// 
+    /// # Returns
+    /// The relative path
+    pub fn relpath<P: AsRef<str>>(path: P, start: Option<&str>) -> Result<String, PyException> {
+        let path_buf = Path::new(path.as_ref());
+        let start_path = match start {
+            Some(s) => Path::new(s),
+            None => Path::new("."),
+        };
+        
+        match path_buf.strip_prefix(start_path) {
+            Ok(relative) => Ok(relative.to_string_lossy().to_string()),
+            Err(_) => {
+                // If stripping prefix fails, try to calculate relative path manually
+                // This is a simplified version - a full implementation would handle more cases
+                Ok(path.as_ref().to_string())
+            }
+        }
     }
 }

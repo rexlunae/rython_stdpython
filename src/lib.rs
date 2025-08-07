@@ -1192,6 +1192,25 @@ pub use stdlib::sys;
 pub use stdlib::os; 
 #[cfg(feature = "std")]
 pub use stdlib::subprocess;
+#[cfg(feature = "std")]
+pub use stdlib::sysconfig;
+#[cfg(feature = "std")]
+pub use stdlib::venv;
+pub use stdlib::math;
+#[cfg(feature = "std")]
+pub use stdlib::random;
+#[cfg(feature = "std")]
+pub use stdlib::datetime;
+pub use stdlib::string;
+pub use stdlib::json;
+pub use stdlib::collections;
+pub use stdlib::itertools;
+#[cfg(feature = "std")]
+pub use stdlib::pathlib;
+#[cfg(feature = "std")]
+pub use stdlib::tempfile;
+#[cfg(feature = "std")]
+pub use stdlib::glob;
 
 /// Placeholder for ensure_venv_ready function (from pyperformance or similar)
 /// This is not a standard Python built-in, so we provide a stub that returns dummy values

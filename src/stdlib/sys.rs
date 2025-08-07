@@ -18,6 +18,33 @@ pub static executable: std::sync::LazyLock<String> = std::sync::LazyLock::new(||
         .unwrap_or_else(|_| "python".to_string())
 });
 
+/// sys.version_info - version information as a tuple-like structure
+/// 
+/// Python's version_info is a named tuple with major, minor, micro, etc.
+/// For compiled code, we simulate Python version information.
+pub static version_info: std::sync::LazyLock<Vec<i32>> = std::sync::LazyLock::new(|| {
+    vec![3, 11, 0]  // Simulate Python 3.11.0
+});
+
+/// sys.prefix - installation prefix
+/// 
+/// In Python, this is the directory prefix where Python is installed.
+/// For compiled code, we use the executable's directory.
+pub static prefix: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(|p| p.to_string_lossy().to_string()))
+        .unwrap_or_else(|| "/usr/local".to_string())
+});
+
+/// sys.base_prefix - base installation prefix
+/// 
+/// In Python, this is the base installation prefix (before virtual environments).
+/// For simplicity, we make it the same as prefix.
+pub static base_prefix: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    prefix.clone()
+});
+
 /// sys.argv - command line arguments (property)
 /// 
 /// Returns the command line arguments passed to the program.
@@ -31,20 +58,77 @@ pub static argv: std::sync::LazyLock<Vec<String>> = std::sync::LazyLock::new(|| 
 /// sys.exit - exit the program (generic function)
 /// 
 /// # Arguments
-/// * `code` - Exit status code (anything convertible to i32)
+/// * `code` - Exit status code (anything convertible to i32, or string message)
 /// 
 /// # Example
 /// ```rust
 /// use stdpython::sys;
 /// // sys::exit(0i32); // This would exit the program successfully
 /// // sys::exit(1u8);  // This would exit with error code 1
+/// // sys::exit("error message"); // This would exit with code 1
 /// ```
 #[cfg(feature = "std")]
 pub fn exit<T>(code: T) -> ! 
 where
-    T: Into<i32>,
+    T: Into<ExitCode>,
 {
-    std::process::exit(code.into());
+    let exit_code = code.into();
+    match exit_code {
+        ExitCode::Code(c) => std::process::exit(c),
+        ExitCode::Message(msg) => {
+            eprintln!("{}", msg);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Helper enum to handle both numeric exit codes and string messages
+pub enum ExitCode {
+    Code(i32),
+    Message(String),
+}
+
+impl From<i32> for ExitCode {
+    fn from(code: i32) -> Self {
+        ExitCode::Code(code)
+    }
+}
+
+impl From<&str> for ExitCode {
+    fn from(message: &str) -> Self {
+        ExitCode::Message(message.to_string())
+    }
+}
+
+impl From<String> for ExitCode {
+    fn from(message: String) -> Self {
+        ExitCode::Message(message)
+    }
+}
+
+// Add support for other common integer types
+impl From<i8> for ExitCode {
+    fn from(code: i8) -> Self {
+        ExitCode::Code(code as i32)
+    }
+}
+
+impl From<u8> for ExitCode {
+    fn from(code: u8) -> Self {
+        ExitCode::Code(code as i32)
+    }
+}
+
+impl From<i16> for ExitCode {
+    fn from(code: i16) -> Self {
+        ExitCode::Code(code as i32)
+    }
+}
+
+impl From<u16> for ExitCode {
+    fn from(code: u16) -> Self {
+        ExitCode::Code(code as i32)
+    }
 }
 
 /// sys.exit - no-std version (panics instead of exiting)
