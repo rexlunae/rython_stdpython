@@ -172,12 +172,12 @@ pub fn print<T: Display>(object: T) {
 /// Python print() function with multiple arguments
 /// Note: Only available with `std` feature - requires OS I/O capabilities
 #[cfg(feature = "std")]
-pub fn print_args<T: Display>(objects: &[T], sep: &str, end: &str) {
+pub fn print_args<T: Display, S: AsRef<str>, E: AsRef<str>>(objects: &[T], sep: S, end: E) {
     let output = objects.iter()
         .map(|obj| format!("{}", obj))
         .collect::<Vec<_>>()
-        .join(sep);
-    print!("{}{}", output, end);
+        .join(sep.as_ref());
+    print!("{}{}", output, end.as_ref());
 }
 
 /// No-std version of print - stores output in a string instead of printing
@@ -190,12 +190,12 @@ pub fn print_to_string<T: Display>(object: T) -> String {
 
 /// No-std version of print with multiple arguments
 #[cfg(not(feature = "std"))]
-pub fn print_args_to_string<T: Display>(objects: &[T], sep: &str, end: &str) -> String {
+pub fn print_args_to_string<T: Display, S: AsRef<str>, E: AsRef<str>>(objects: &[T], sep: S, end: E) -> String {
     let output = objects.iter()
         .map(|obj| format!("{}", obj))
         .collect::<Vec<_>>()
-        .join(sep);
-    format!("{}{}", output, end)
+        .join(sep.as_ref());
+    format!("{}{}", output, end.as_ref())
 }
 
 /// Python len() function - returns the length of an object
@@ -215,7 +215,7 @@ where
 /// A new HashMap containing the provided key-value pairs
 pub fn dict<K, V>(pairs: HashMap<K, V>) -> HashMap<K, V> 
 where
-    K: std::hash::Hash + Eq,
+    K: Hash + Eq,
 {
     pairs
 }
@@ -226,7 +226,7 @@ where
 pub fn dict_with_env<E, K, V>(env: E, additional: HashMap<K, V>) -> HashMap<K, V>
 where
     E: AsEnvLike<K, V>,
-    K: std::hash::Hash + Eq + for<'a> From<&'a str>,
+    K: Hash + Eq + for<'a> From<&'a str>,
     V: for<'a> From<&'a str>,
 {
     let env_map = env.as_env_like();
@@ -240,7 +240,7 @@ where
 /// Simplified dict creation from key-value pairs
 pub fn dict_from_pairs<K, V, I>(pairs: I) -> HashMap<K, V>
 where
-    K: std::hash::Hash + Eq,
+    K: Hash + Eq,
     I: IntoIterator<Item = (K, V)>,
 {
     pairs.into_iter().collect()
@@ -639,31 +639,31 @@ impl PyStr {
     }
     
     /// Python str.replace() method
-    pub fn replace(&self, old: &str, new: &str) -> PyStr {
-        PyStr::new(self.inner.replace(old, new))
+    pub fn replace<O: AsRef<str>, N: AsRef<str>>(&self, old: O, new: N) -> PyStr {
+        PyStr::new(self.inner.replace(old.as_ref(), new.as_ref()))
     }
     
     /// Python str.startswith() method
-    pub fn startswith(&self, prefix: &str) -> bool {
-        self.inner.starts_with(prefix)
+    pub fn startswith<P: AsRef<str>>(&self, prefix: P) -> bool {
+        self.inner.starts_with(prefix.as_ref())
     }
     
     /// Python str.endswith() method
-    pub fn endswith(&self, suffix: &str) -> bool {
-        self.inner.ends_with(suffix)
+    pub fn endswith<S: AsRef<str>>(&self, suffix: S) -> bool {
+        self.inner.ends_with(suffix.as_ref())
     }
     
     /// Python str.find() method
-    pub fn find(&self, sub: &str) -> i64 {
-        match self.inner.find(sub) {
+    pub fn find<S: AsRef<str>>(&self, sub: S) -> i64 {
+        match self.inner.find(sub.as_ref()) {
             Some(pos) => pos as i64,
             None => -1,
         }
     }
     
     /// Python str.count() method
-    pub fn count(&self, sub: &str) -> usize {
-        self.inner.matches(sub).count()
+    pub fn count<S: AsRef<str>>(&self, sub: S) -> usize {
+        self.inner.matches(sub.as_ref()).count()
     }
     
     /// Python str.format() method (basic implementation)
@@ -1115,10 +1115,10 @@ pub struct PyException {
 }
 
 impl PyException {
-    pub fn new(exception_type: &str, message: &str) -> Self {
+    pub fn new<T: AsRef<str>, M: AsRef<str>>(exception_type: T, message: M) -> Self {
         Self {
-            message: message.to_string(),
-            exception_type: exception_type.to_string(),
+            message: message.as_ref().to_string(),
+            exception_type: exception_type.as_ref().to_string(),
         }
     }
 }
@@ -1134,48 +1134,48 @@ impl Display for PyException {
 impl std::error::Error for PyException {}
 
 /// Python ValueError
-pub fn value_error(message: &str) -> PyException {
-    PyException::new("ValueError", message)
+pub fn value_error<M: AsRef<str>>(message: M) -> PyException {
+    PyException::new("ValueError", message.as_ref())
 }
 
 /// Python TypeError  
-pub fn type_error(message: &str) -> PyException {
-    PyException::new("TypeError", message)
+pub fn type_error<M: AsRef<str>>(message: M) -> PyException {
+    PyException::new("TypeError", message.as_ref())
 }
 
 /// Python IndexError
-pub fn index_error(message: &str) -> PyException {
-    PyException::new("IndexError", message)
+pub fn index_error<M: AsRef<str>>(message: M) -> PyException {
+    PyException::new("IndexError", message.as_ref())
 }
 
 /// Python KeyError
-pub fn key_error(message: &str) -> PyException {
-    PyException::new("KeyError", message)
+pub fn key_error<M: AsRef<str>>(message: M) -> PyException {
+    PyException::new("KeyError", message.as_ref())
 }
 
 /// Python AttributeError
-pub fn attribute_error(message: &str) -> PyException {
-    PyException::new("AttributeError", message)
+pub fn attribute_error<M: AsRef<str>>(message: M) -> PyException {
+    PyException::new("AttributeError", message.as_ref())
 }
 
 /// Python NameError
-pub fn name_error(message: &str) -> PyException {
-    PyException::new("NameError", message)
+pub fn name_error<M: AsRef<str>>(message: M) -> PyException {
+    PyException::new("NameError", message.as_ref())
 }
 
 /// Python ZeroDivisionError
-pub fn zero_division_error(message: &str) -> PyException {
-    PyException::new("ZeroDivisionError", message)
+pub fn zero_division_error<M: AsRef<str>>(message: M) -> PyException {
+    PyException::new("ZeroDivisionError", message.as_ref())
 }
 
 /// Python OverflowError
-pub fn overflow_error(message: &str) -> PyException {
-    PyException::new("OverflowError", message)
+pub fn overflow_error<M: AsRef<str>>(message: M) -> PyException {
+    PyException::new("OverflowError", message.as_ref())
 }
 
 /// Python RuntimeError
-pub fn runtime_error(message: &str) -> PyException {
-    PyException::new("RuntimeError", message)
+pub fn runtime_error<M: AsRef<str>>(message: M) -> PyException {
+    PyException::new("RuntimeError", message.as_ref())
 }
 
 // ============================================================================
@@ -1186,16 +1186,19 @@ pub fn runtime_error(message: &str) -> PyException {
 pub mod stdlib;
 
 // Re-export stdlib modules at the top level for convenience
+#[cfg(feature = "std")]
 pub use stdlib::sys;
+#[cfg(feature = "std")]
 pub use stdlib::os; 
+#[cfg(feature = "std")]
 pub use stdlib::subprocess;
 
 /// Placeholder for ensure_venv_ready function (from pyperformance or similar)
 /// This is not a standard Python built-in, so we provide a stub that returns dummy values
-pub fn ensure_venv_ready(kind: &str) -> (String, String) {
+pub fn ensure_venv_ready<K: AsRef<str>>(kind: K) -> (String, String) {
     // In a real implementation, this would set up a virtual environment
     // For now, return placeholder values
-    (format!("/tmp/venv_{}", kind), "python".to_string())
+    (format!("/tmp/venv_{}", kind.as_ref()), "python".to_string())
 }
 
 /// Python special variables
@@ -1210,11 +1213,11 @@ pub const __name__: &str = "__main__";
 /// 
 /// Note: Only available with `std` feature - requires OS I/O capabilities
 #[cfg(feature = "std")]
-pub fn input(prompt: Option<&str>) -> Result<String, PyException> {
+pub fn input<P: AsRef<str>>(prompt: Option<P>) -> Result<String, PyException> {
     use std::io::{self, Write};
     
     if let Some(p) = prompt {
-        print!("{}", p);
+        print!("{}", p.as_ref());
         io::stdout().flush().map_err(|e| runtime_error(&format!("I/O error: {}", e)))?;
     }
     
@@ -1237,29 +1240,29 @@ pub fn input(prompt: Option<&str>) -> Result<String, PyException> {
 /// 
 /// Note: Only available with `std` feature - requires OS I/O capabilities
 #[cfg(feature = "std")]
-pub fn open(filename: &str, mode: Option<&str>) -> Result<PyFile, PyException> {
+pub fn open<F: AsRef<str>, M: AsRef<str>>(filename: F, mode: Option<M>) -> Result<PyFile, PyException> {
     use std::fs::{File, OpenOptions};
     use std::io::{BufReader, BufWriter};
     
-    let mode = mode.unwrap_or("r");
+    let mode = mode.as_ref().map(|m| m.as_ref()).unwrap_or("r");
     
     let file = match mode {
         "r" => {
-            let f = File::open(filename)
-                .map_err(|e| runtime_error(&format!("Could not open file '{}': {}", filename, e)))?;
+            let f = File::open(filename.as_ref())
+                .map_err(|e| runtime_error(format!("Could not open file '{}': {}", filename.as_ref(), e)))?;
             PyFile::new_read(BufReader::new(f))
         },
         "w" => {
-            let f = File::create(filename)
-                .map_err(|e| runtime_error(&format!("Could not create file '{}': {}", filename, e)))?;
+            let f = File::create(filename.as_ref())
+                .map_err(|e| runtime_error(format!("Could not create file '{}': {}", filename.as_ref(), e)))?;
             PyFile::new_write(BufWriter::new(f))
         },
         "a" => {
             let f = OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(filename)
-                .map_err(|e| runtime_error(&format!("Could not open file '{}' for append: {}", filename, e)))?;
+                .open(filename.as_ref())
+                .map_err(|e| runtime_error(format!("Could not open file '{}' for append: {}", filename.as_ref(), e)))?;
             PyFile::new_write(BufWriter::new(f))
         },
         _ => return Err(value_error(&format!("Invalid file mode: '{}'", mode))),
@@ -1334,11 +1337,11 @@ impl PyFile {
     }
     
     /// Python file.write() method
-    pub fn write(&mut self, data: &str) -> Result<usize, PyException> {
+    pub fn write<D: AsRef<str>>(&mut self, data: D) -> Result<usize, PyException> {
         use std::io::Write;
         
         if let Some(writer) = &mut self.writer {
-            writer.write(data.as_bytes())
+            writer.write(data.as_ref().as_bytes())
                 .map_err(|e| runtime_error(&format!("Write error: {}", e)))
         } else {
             Err(runtime_error("File not opened for writing"))
@@ -1346,7 +1349,7 @@ impl PyFile {
     }
     
     /// Python file.writelines() method
-    pub fn writelines(&mut self, lines: &[&str]) -> Result<(), PyException> {
+    pub fn writelines<S: AsRef<str>>(&mut self, lines: &[S]) -> Result<(), PyException> {
         for line in lines {
             self.write(line)?;
         }
@@ -1399,8 +1402,8 @@ pub fn py_tuple<T>(items: Vec<T>) -> PyTuple<T> {
 }
 
 /// Helper for string formatting (common in f-strings compilation)
-pub fn format_string(template: &str, args: &[&dyn Display]) -> String {
-    let mut result = template.to_string();
+pub fn format_string<T: AsRef<str>>(template: T, args: &[&dyn Display]) -> String {
+    let mut result = template.as_ref().to_string();
     for (i, arg) in args.iter().enumerate() {
         let placeholder = format!("{{{}}}", i);
         result = result.replace(&placeholder, &format!("{}", arg));
@@ -1491,11 +1494,11 @@ where
 }
 
 /// Helper for Python-style string multiplication
-pub fn multiply_string(s: &str, count: i64) -> String {
+pub fn multiply_string<S: AsRef<str>>(s: S, count: i64) -> String {
     if count <= 0 {
         String::new()
     } else {
-        s.repeat(count as usize)
+        s.as_ref().repeat(count as usize)
     }
 }
 
@@ -1512,8 +1515,8 @@ where
 }
 
 /// Helper for in/not in operations on strings
-pub fn string_contains(haystack: &str, needle: &str) -> bool {
-    haystack.contains(needle)
+pub fn string_contains<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N) -> bool {
+    haystack.as_ref().contains(needle.as_ref())
 }
 
 /// Helper for in/not in operations on lists

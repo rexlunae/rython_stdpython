@@ -2,6 +2,9 @@
 //! 
 //! This module provides Python's os module functionality for
 //! operating system interface functions.
+//!
+//! Note: This module is only available with the `std` feature enabled,
+//! as it requires operating system functionality.
 
 use crate::{PyException, AsStrLike, AsPathLike};
 use std::collections::HashMap;
@@ -38,16 +41,16 @@ where
 /// On Unix systems, this uses the actual execv system call.
 /// On Windows, this is simulated using process spawn and exit.
 #[cfg(unix)]
-pub fn execv(program: &str, args: Vec<&str>) -> Result<(), PyException> {
+pub fn execv<P: AsRef<str>, A: AsRef<str>>(program: P, args: Vec<A>) -> Result<(), PyException> {
     use std::ffi::CString;
     
     // Convert program path and arguments to C strings
-    let program_c = CString::new(program)
+    let program_c = CString::new(program.as_ref())
         .map_err(|_| crate::value_error("Invalid program path"))?;
     
     let mut args_c: Vec<CString> = Vec::new();
-    for arg in args {
-        args_c.push(CString::new(arg)
+    for arg in &args {
+        args_c.push(CString::new(arg.as_ref())
             .map_err(|_| crate::value_error("Invalid argument"))?);
     }
     
@@ -63,23 +66,23 @@ pub fn execv(program: &str, args: Vec<&str>) -> Result<(), PyException> {
     }
     
     // If we reach here, execv failed
-    Err(crate::runtime_error(&format!("execv failed for program: {}", program)))
+    Err(crate::runtime_error(format!("execv failed for program: {}", program.as_ref())))
 }
 
 /// os.execv - execute a program (Windows implementation)
 #[cfg(windows)]
-pub fn execv(program: &str, args: Vec<&str>) -> Result<(), PyException> {
+pub fn execv<P: AsRef<str>, A: AsRef<str>>(program: P, args: Vec<A>) -> Result<(), PyException> {
     use std::process::Command;
     
     // On Windows, we simulate execv using process spawn + exit
-    let mut cmd = Command::new(program);
-    cmd.args(&args);
+    let mut cmd = Command::new(program.as_ref());
+    cmd.args(args.iter().map(|a| a.as_ref()));
     
     match cmd.status() {
         Ok(status) => {
             std::process::exit(status.code().unwrap_or(1));
         }
-        Err(e) => Err(crate::runtime_error(&format!("Failed to execute program {}: {}", program, e)))
+        Err(e) => Err(crate::runtime_error(format!("Failed to execute program {}: {}", program.as_ref(), e)))
     }
 }
 
@@ -145,6 +148,9 @@ where
 pub static environ: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     std::env::vars().collect()
 });
+
+// Compatibility aliases for generated code
+// Note: Functions are already public in this module, no need to re-export
 
 /// os.path submodule
 pub mod path {
@@ -241,8 +247,8 @@ pub mod path {
     /// 
     /// # Returns
     /// true if the path is a regular file, false otherwise
-    pub fn isfile(path: &str) -> bool {
-        Path::new(path).is_file()
+    pub fn isfile<P: AsRef<str>>(path: P) -> bool {
+        Path::new(path.as_ref()).is_file()
     }
     
     /// os.path.isdir - check if path is a directory
@@ -252,8 +258,8 @@ pub mod path {
     /// 
     /// # Returns
     /// true if the path is a directory, false otherwise
-    pub fn isdir(path: &str) -> bool {
-        Path::new(path).is_dir()
+    pub fn isdir<P: AsRef<str>>(path: P) -> bool {
+        Path::new(path.as_ref()).is_dir()
     }
     
     /// os.path.abspath - return absolute path
@@ -263,9 +269,9 @@ pub mod path {
     /// 
     /// # Returns
     /// The absolute path
-    pub fn abspath(path: &str) -> Result<String, PyException> {
-        std::fs::canonicalize(path)
+    pub fn abspath<P: AsRef<str>>(path: P) -> Result<String, PyException> {
+        std::fs::canonicalize(path.as_ref())
             .map(|p| p.to_string_lossy().to_string())
-            .map_err(|e| crate::runtime_error(&format!("Failed to get absolute path for {}: {}", path, e)))
+            .map_err(|e| crate::runtime_error(format!("Failed to get absolute path for {}: {}", path.as_ref(), e)))
     }
 }

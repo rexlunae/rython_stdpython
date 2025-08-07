@@ -1,5 +1,6 @@
 use stdpython::*;
 
+#[cfg(feature = "std")]
 fn main() {
     println!("=== Generic rython_stdpython Demo ===");
 
@@ -46,4 +47,25 @@ fn main() {
     }
 
     println!("=== Demo Complete ===");
+}
+
+#[cfg(not(feature = "std"))]
+fn main() {
+    println!("=== Generic rython_stdpython Demo (no-std) ===");
+    
+    // Test generic functions that work in no-std
+    let numbers = vec![1, 2, 3, 4, 5];
+    let sum_result = sum(&numbers[..]);
+    println!("Sum of {:?}: {}", numbers, sum_result);
+    
+    // Test generic string operations  
+    let s = "hello world";
+    let s_owned = String::from("rust programming");
+    
+    let contains1 = string_contains(s, "world");
+    let contains2 = string_contains(&s_owned, "rust");
+    println!("'{}' contains 'world': {}", s, contains1);
+    println!("'{}' contains 'rust': {}", s_owned, contains2);
+    
+    println!("=== Demo Complete (no-std) ===");
 }

@@ -236,7 +236,7 @@ fn test_python_io_compatibility() {
     
     // Test that I/O functions are available
     // Note: We can't test input() in automated tests, but we can verify it compiles
-    let _input_available = input;
+    let _input_available = input::<&str>;
     
     println!("  ✓ I/O functions available in std mode");
 }

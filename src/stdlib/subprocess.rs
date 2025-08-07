@@ -2,6 +2,9 @@
 //! 
 //! This module provides Python's subprocess module functionality for
 //! spawning new processes and connecting to their input/output/error pipes.
+//!
+//! Note: This module is only available with the `std` feature enabled,
+//! as it requires process spawning functionality.
 
 use std::process::Command;
 use std::collections::HashMap;
@@ -63,7 +66,7 @@ where
     let owned_args: Vec<String> = args.into_iter().map(|s| s.as_str_like().to_string()).collect();
     let str_args: Vec<&str> = owned_args.iter().map(|s| s.as_str()).collect();
     let str_cwd = cwd.as_ref().map(|c| c.as_path_like());
-    run_with_env(str_args, str_cwd, None)
+    run_with_env_str(str_args, str_cwd, None)
 }
 
 /// subprocess.run - run a command
@@ -78,11 +81,13 @@ where
 /// # Example
 /// ```rust
 /// use stdpython::subprocess;
-/// let result = subprocess::run(vec!["echo", "hello"], None);
+/// let result = subprocess::run(vec!["echo", "hello"], None::<&str>);
 /// // result.returncode should be 0 for success
 /// ```
-pub fn run(args: Vec<&str>, cwd: Option<&str>) -> Result<CompletedProcess, PyException> {
-    run_with_env(args, cwd, None)
+pub fn run<A: AsRef<str>, C: AsRef<str>>(args: Vec<A>, cwd: Option<C>) -> Result<CompletedProcess, PyException> {
+    let str_args: Vec<&str> = args.iter().map(|a| a.as_ref()).collect();
+    let str_cwd = cwd.as_ref().map(|c| c.as_ref());
+    run_with_env_str(str_args, str_cwd, None)
 }
 
 /// subprocess.run with environment variables - run a command with custom environment (generic)
@@ -119,7 +124,7 @@ where
         }
         hash_map
     });
-    run_with_env(str_args, str_cwd, env_map.as_ref())
+    run_with_env_str(str_args, str_cwd, env_map.as_ref())
 }
 
 /// subprocess.run with environment variables - run a command with custom environment
@@ -131,7 +136,7 @@ where
 /// 
 /// # Returns
 /// A CompletedProcess instance with the result
-pub fn run_with_env(args: Vec<&str>, cwd: Option<&str>, env: Option<&HashMap<String, String>>) -> Result<CompletedProcess, PyException> {
+pub fn run_with_env_str(args: Vec<&str>, cwd: Option<&str>, env: Option<&HashMap<String, String>>) -> Result<CompletedProcess, PyException> {
     if args.is_empty() {
         return Err(crate::value_error("Empty command"));
     }
@@ -175,24 +180,27 @@ pub fn run_with_env(args: Vec<&str>, cwd: Option<&str>, env: Option<&HashMap<Str
 /// 
 /// # Returns
 /// A CompletedProcess instance with the result including captured output
-pub fn run_with_output(args: Vec<&str>, cwd: Option<&str>, capture_output: bool) -> Result<CompletedProcess, PyException> {
+pub fn run_with_output<A: AsRef<str>, C: AsRef<str>>(args: Vec<A>, cwd: Option<C>, capture_output: bool) -> Result<CompletedProcess, PyException> {
     if args.is_empty() {
         return Err(crate::value_error("Empty command"));
     }
     
-    let mut command = Command::new(&args[0]);
+    let str_args: Vec<&str> = args.iter().map(|a| a.as_ref()).collect();
+    let str_cwd = cwd.as_ref().map(|c| c.as_ref());
+    
+    let mut command = Command::new(&str_args[0]);
     
     // Add arguments
-    if args.len() > 1 {
-        command.args(&args[1..]);
+    if str_args.len() > 1 {
+        command.args(&str_args[1..]);
     }
     
     // Set working directory if provided
-    if let Some(dir) = cwd {
+    if let Some(dir) = str_cwd {
         command.current_dir(dir);
     }
     
-    let args_owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+    let args_owned: Vec<String> = str_args.iter().map(|s| s.to_string()).collect();
     
     if capture_output {
         // Capture output
@@ -204,7 +212,7 @@ pub fn run_with_output(args: Vec<&str>, cwd: Option<&str>, capture_output: bool)
                 Ok(CompletedProcess::with_output(args_owned, returncode, stdout, stderr))
             }
             Err(e) => {
-                Err(crate::runtime_error(&format!("Failed to execute command '{}': {}", args[0], e)))
+                Err(crate::runtime_error(format!("Failed to execute command '{}': {}", str_args[0], e)))
             }
         }
     } else {
@@ -215,7 +223,7 @@ pub fn run_with_output(args: Vec<&str>, cwd: Option<&str>, capture_output: bool)
                 Ok(CompletedProcess::new(args_owned, returncode))
             }
             Err(e) => {
-                Err(crate::runtime_error(&format!("Failed to execute command '{}': {}", args[0], e)))
+                Err(crate::runtime_error(format!("Failed to execute command '{}': {}", str_args[0], e)))
             }
         }
     }
@@ -244,8 +252,8 @@ where
 /// 
 /// # Returns
 /// The exit code of the process
-pub fn call(args: Vec<&str>) -> Result<i32, PyException> {
-    let result = run(args, None)?;
+pub fn call<A: AsRef<str>>(args: Vec<A>) -> Result<i32, PyException> {
+    let result = run(args, None::<&str>)?;
     Ok(result.returncode)
 }
 
@@ -256,11 +264,11 @@ pub fn call(args: Vec<&str>) -> Result<i32, PyException> {
 /// 
 /// # Returns
 /// Nothing if successful, raises exception if process fails
-pub fn check_call(args: Vec<&str>) -> Result<(), PyException> {
-    let result = run(args.clone(), None)?;
+pub fn check_call<A: AsRef<str> + Clone>(args: Vec<A>) -> Result<(), PyException> {
+    let result = run(args.clone(), None::<&str>)?;
     if result.returncode != 0 {
-        let cmd = args.join(" ");
-        return Err(crate::runtime_error(&format!("Command '{}' failed with exit code {}", cmd, result.returncode)));
+        let cmd = args.iter().map(|a| a.as_ref()).collect::<Vec<&str>>().join(" ");
+        return Err(crate::runtime_error(format!("Command '{}' failed with exit code {}", cmd, result.returncode)));
     }
     Ok(())
 }
@@ -272,11 +280,14 @@ pub fn check_call(args: Vec<&str>) -> Result<(), PyException> {
 /// 
 /// # Returns
 /// The stdout of the process as a string
-pub fn check_output(args: Vec<&str>) -> Result<String, PyException> {
-    let result = run_with_output(args.clone(), None, true)?;
+pub fn check_output<A: AsRef<str> + Clone>(args: Vec<A>) -> Result<String, PyException> {
+    let result = run_with_output(args.clone(), None::<&str>, true)?;
     if result.returncode != 0 {
-        let cmd = args.join(" ");
-        return Err(crate::runtime_error(&format!("Command '{}' failed with exit code {}", cmd, result.returncode)));
+        let cmd = args.iter().map(|a| a.as_ref()).collect::<Vec<&str>>().join(" ");
+        return Err(crate::runtime_error(format!("Command '{}' failed with exit code {}", cmd, result.returncode)));
     }
     Ok(result.stdout.unwrap_or_default())
 }
+
+// Compatibility aliases for generated code
+// Note: Functions are already public in this module, no need to re-export
