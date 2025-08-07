@@ -1,6 +1,6 @@
 [package]
 name = "stdpython"
-version = "1.0.5"
+version = "1.0.6"
 edition = "2024"
 description = "Python standard library runtime for the Rython compiler ecosystem"
 license = "Apache-2.0"
@@ -14,6 +14,9 @@ nostd = ["hashbrown", "heapless"]
 
 [dependencies]
 pyo3 = {version = "0.25", features=["auto-initialize"], optional = true}
+
+# For custom Python signature macros
+paste = "1.0"
 
 # nostd-compatible dependencies
 hashbrown = { version = "0.15", optional = true }

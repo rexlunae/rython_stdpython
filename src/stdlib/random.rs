@@ -4,6 +4,7 @@
 //! Implementation matches Python's random module API.
 
 use crate::PyException;
+use crate::python_function;
 use std::sync::Mutex;
 
 // Simple linear congruential generator for reproducible results
@@ -28,33 +29,41 @@ impl LCGRandom {
 
 static RNG: Mutex<LCGRandom> = Mutex::new(LCGRandom { seed: 1 });
 
-/// random.seed - initialize random number generator
-pub fn seed<T>(a: Option<T>) 
-where
-    T: Into<u64>,
-{
-    let seed_val = match a {
-        Some(val) => val.into(),
-        None => {
-            // Use current time as seed
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs()
+python_function! {
+    /// random.seed - initialize random number generator
+    pub fn seed<T>(a: Option<T>) -> ()
+    where [T: Into<u64>]
+    [signature: (a=None)]
+    [concrete_types: (Option<u64>) -> ()]
+    {
+        let seed_val = match a {
+            Some(val) => val.into(),
+            None => {
+                // Use current time as seed
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs()
+            }
+        };
+        
+        if let Ok(mut rng) = RNG.lock() {
+            *rng = LCGRandom::new(seed_val);
         }
-    };
-    
-    if let Ok(mut rng) = RNG.lock() {
-        *rng = LCGRandom::new(seed_val);
     }
 }
 
-/// random.getstate - return internal state
-pub fn getstate() -> Vec<u64> {
-    if let Ok(rng) = RNG.lock() {
-        vec![rng.seed]
-    } else {
-        vec![1]
+python_function! {
+    /// random.getstate - return internal state
+    pub fn getstate() -> Vec<u64>
+    [signature: ()]
+    [concrete_types: () -> Vec<u64>]
+    {
+        if let Ok(rng) = RNG.lock() {
+            vec![rng.seed]
+        } else {
+            vec![1]
+        }
     }
 }
 
@@ -72,44 +81,52 @@ pub fn setstate(state: &[u64]) -> Result<(), PyException> {
     }
 }
 
-/// random.random - random float in [0.0, 1.0)
-pub fn random() -> f64 {
-    if let Ok(mut rng) = RNG.lock() {
-        rng.random()
-    } else {
-        0.5 // fallback
+python_function! {
+    /// random.random - random float in [0.0, 1.0)
+    pub fn random() -> f64
+    [signature: ()]
+    [concrete_types: () -> f64]
+    {
+        if let Ok(mut rng) = RNG.lock() {
+            rng.random()
+        } else {
+            0.5 // fallback
+        }
     }
 }
 
-/// random.uniform - random float in [a, b]
-pub fn uniform<T, U>(a: T, b: U) -> f64 
-where
-    T: Into<f64>,
-    U: Into<f64>,
-{
-    let a = a.into();
-    let b = b.into();
-    a + (b - a) * random()
+python_function! {
+    /// random.uniform - random float in [a, b]
+    pub fn uniform<T, U>(a: T, b: U) -> f64
+    where [T: Into<f64>, U: Into<f64>]
+    [signature: (a, b)]
+    [concrete_types: (f64, f64) -> f64]
+    {
+        let a = a.into();
+        let b = b.into();
+        a + (b - a) * random()
+    }
 }
 
-/// random.triangular - triangular distribution
-pub fn triangular<T, U, V>(low: T, high: U, mode: Option<V>) -> f64 
-where
-    T: Into<f64>,
-    U: Into<f64>,
-    V: Into<f64>,
-{
-    let low = low.into();
-    let high = high.into();
-    let mode = mode.map(|m| m.into()).unwrap_or((low + high) / 2.0);
-    
-    let u = random();
-    let c = (mode - low) / (high - low);
-    
-    if u <= c {
-        low + ((high - low) * (mode - low) * u).sqrt()
-    } else {
-        high - ((high - low) * (high - mode) * (1.0 - u)).sqrt()
+python_function! {
+    /// random.triangular - triangular distribution
+    pub fn triangular<T, U, V>(low: T, high: U, mode: Option<V>) -> f64
+    where [T: Into<f64>, U: Into<f64>, V: Into<f64>]
+    [signature: (low, high, mode=None)]
+    [concrete_types: (f64, f64, Option<f64>) -> f64]
+    {
+        let low = low.into();
+        let high = high.into();
+        let mode = mode.map(|m| m.into()).unwrap_or((low + high) / 2.0);
+        
+        let u = random();
+        let c = (mode - low) / (high - low);
+        
+        if u <= c {
+            low + ((high - low) * (mode - low) * u).sqrt()
+        } else {
+            high - ((high - low) * (high - mode) * (1.0 - u)).sqrt()
+        }
     }
 }
 

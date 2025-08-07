@@ -3,7 +3,7 @@
 //! This module provides string-related constants and template classes.
 //! Implementation matches Python's string module API.
 
-use crate::PyException;
+use crate::{PyException, python_function};
 
 // String constants
 pub const ascii_lowercase: &str = "abcdefghijklmnopqrstuvwxyz";
@@ -16,39 +16,45 @@ pub const punctuation: &str = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 pub const printable: &str = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c";
 pub const whitespace: &str = " \t\n\r\x0b\x0c";
 
-/// string.capwords - capitalize words in string
-pub fn capwords<S: AsRef<str>>(s: S, sep: Option<&str>) -> String {
-    let s = s.as_ref();
-    match sep {
-        Some(separator) => {
-            s.split(separator)
-                .map(|word| {
-                    let mut chars: Vec<char> = word.chars().collect();
-                    if let Some(first_char) = chars.first_mut() {
-                        *first_char = first_char.to_uppercase().next().unwrap_or(*first_char);
-                    }
-                    for ch in chars.iter_mut().skip(1) {
-                        *ch = ch.to_lowercase().next().unwrap_or(*ch);
-                    }
-                    chars.into_iter().collect::<String>()
-                })
-                .collect::<Vec<String>>()
-                .join(separator)
-        }
-        None => {
-            s.split_whitespace()
-                .map(|word| {
-                    let mut chars: Vec<char> = word.chars().collect();
-                    if let Some(first_char) = chars.first_mut() {
-                        *first_char = first_char.to_uppercase().next().unwrap_or(*first_char);
-                    }
-                    for ch in chars.iter_mut().skip(1) {
-                        *ch = ch.to_lowercase().next().unwrap_or(*ch);
-                    }
-                    chars.into_iter().collect::<String>()
-                })
-                .collect::<Vec<String>>()
-                .join(" ")
+python_function! {
+    /// string.capwords - capitalize words in string
+    pub fn capwords<S>(s: S, sep: Option<String>) -> String
+    where [S: AsRef<str>]
+    [signature: (s, sep=None)]
+    [concrete_types: (String, Option<String>) -> String]
+    {
+        let s = s.as_ref();
+        match sep {
+            Some(separator) => {
+                s.split(&separator)
+                    .map(|word| {
+                        let mut chars: Vec<char> = word.chars().collect();
+                        if let Some(first_char) = chars.first_mut() {
+                            *first_char = first_char.to_uppercase().next().unwrap_or(*first_char);
+                        }
+                        for ch in chars.iter_mut().skip(1) {
+                            *ch = ch.to_lowercase().next().unwrap_or(*ch);
+                        }
+                        chars.into_iter().collect::<String>()
+                    })
+                    .collect::<Vec<String>>()
+                    .join(&separator)
+            }
+            None => {
+                s.split_whitespace()
+                    .map(|word| {
+                        let mut chars: Vec<char> = word.chars().collect();
+                        if let Some(first_char) = chars.first_mut() {
+                            *first_char = first_char.to_uppercase().next().unwrap_or(*first_char);
+                        }
+                        for ch in chars.iter_mut().skip(1) {
+                            *ch = ch.to_lowercase().next().unwrap_or(*ch);
+                        }
+                        chars.into_iter().collect::<String>()
+                    })
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            }
         }
     }
 }
@@ -274,7 +280,7 @@ mod tests {
     #[test]
     fn test_capwords() {
         assert_eq!(capwords("hello world", None), "Hello World");
-        assert_eq!(capwords("hello-world", Some("-")), "Hello-World");
+        assert_eq!(capwords("hello-world", Some("-".to_string())), "Hello-World");
         assert_eq!(capwords("HELLO WORLD", None), "Hello World");
     }
     

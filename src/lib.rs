@@ -1185,6 +1185,12 @@ pub fn runtime_error<M: AsRef<str>>(message: M) -> PyException {
 /// Python Standard Library modules
 pub mod stdlib;
 
+
+/// Custom Python signature system that preserves generic parameters
+pub mod python_signature;
+
+// The macros are automatically available at crate root due to #[macro_export]
+
 // Re-export stdlib modules at the top level for convenience
 #[cfg(feature = "std")]
 pub use stdlib::sys;
@@ -1211,6 +1217,144 @@ pub use stdlib::pathlib;
 pub use stdlib::tempfile;
 #[cfg(feature = "std")]
 pub use stdlib::glob;
+
+// Re-export custom macro-generated wrapper functions for generated code
+#[cfg(feature = "std")]
+pub use math::{
+    // Basic math functions
+    ceil_py, ceil_wrapper,
+    floor_py, floor_wrapper,
+    trunc_py, trunc_wrapper,
+    fabs_py, fabs_wrapper,
+    sqrt_py, sqrt_wrapper,
+    pow_py, pow_wrapper,
+    
+    // Exponential and logarithmic functions
+    exp_py, exp_wrapper,
+    exp2_py, exp2_wrapper,
+    expm1_py, expm1_wrapper,
+    log_py, log_wrapper,
+    log2_py, log2_wrapper,
+    log10_py, log10_wrapper,
+    log1p_py, log1p_wrapper,
+    
+    // Trigonometric functions
+    sin_py, sin_wrapper,
+    cos_py, cos_wrapper,
+    tan_py, tan_wrapper,
+    asin_py, asin_wrapper,
+    acos_py, acos_wrapper,
+    atan_py, atan_wrapper,
+    atan2_py, atan2_wrapper,
+    
+    // Hyperbolic functions
+    sinh_py, sinh_wrapper,
+    cosh_py, cosh_wrapper,
+    tanh_py, tanh_wrapper,
+    asinh_py, asinh_wrapper,
+    acosh_py, acosh_wrapper,
+    atanh_py, atanh_wrapper,
+    
+    // Angular conversion
+    degrees_py, degrees_wrapper,
+    radians_py, radians_wrapper,
+    
+    // Special functions
+    factorial_py, factorial_wrapper,
+    gcd_py, gcd_wrapper,
+    lcm_py, lcm_wrapper,
+    
+    // Classification functions
+    isfinite_py, isfinite_wrapper,
+    isinf_py, isinf_wrapper,
+    isnan_py, isnan_wrapper,
+    isclose_py, isclose_wrapper,
+    
+    // Utility functions
+    copysign_py, copysign_wrapper,
+    frexp_py, frexp_wrapper,
+    ldexp_py, ldexp_wrapper,
+    modf_py, modf_wrapper,
+    fmod_py, fmod_wrapper,
+    remainder_py, remainder_wrapper,
+};
+
+// Re-export random module wrapper functions
+#[cfg(feature = "std")]
+pub use random::{
+    // Random number generation
+    seed_py, seed_wrapper,
+    getstate_py, getstate_wrapper,
+    random_py, random_wrapper,
+    
+    // Distribution functions
+    uniform_py, uniform_wrapper,
+    triangular_py, triangular_wrapper,
+};
+
+// Re-export JSON module wrapper functions
+#[cfg(feature = "std")]
+pub use json::{
+    // JSON serialization/deserialization
+    loads_py, loads_wrapper,
+    dumps_py, dumps_wrapper,
+    load_py, load_wrapper,
+    dump_py, dump_wrapper,
+};
+
+pub use os::{
+    // OS functions
+    execv_mixed_py, execv_mixed_wrapper,
+    getenv_py, getenv_wrapper,
+    setenv_py, setenv_wrapper,
+    getcwd_py, getcwd_wrapper,
+    chdir_py, chdir_wrapper,
+};
+
+pub use os::path::{
+    // OS path functions
+    dirname_py, dirname_wrapper,
+    basename_py, basename_wrapper,
+    join_py, join_wrapper,
+    exists_py, exists_wrapper,
+    isfile_py, isfile_wrapper,
+    isdir_py, isdir_wrapper,
+    abspath_py, abspath_wrapper,
+    relpath_py, relpath_wrapper,
+};
+
+#[cfg(feature = "std")]
+pub use sys::{
+    // Sys functions
+    exit_py, exit_wrapper,
+    platform_py, platform_wrapper,
+    version_py, version_wrapper,
+    get_executable_py, get_executable_wrapper,
+    get_argv_py, get_argv_wrapper,
+    get_platform_py, get_platform_wrapper,
+};
+
+pub use string::{
+    // String functions
+    capwords_py, capwords_wrapper,
+};
+
+pub use collections::{
+    // Collections functions
+    counter_py, counter_wrapper,
+    create_deque_py, create_deque_wrapper,
+    defaultdict_int_py, defaultdict_int_wrapper,
+    defaultdict_list_py, defaultdict_list_wrapper,
+};
+
+#[cfg(feature = "std")]
+pub use subprocess::{
+    // Subprocess functions
+    run_py, run_wrapper,
+    call_py, call_wrapper,
+    check_call_py, check_call_wrapper,
+    check_output_py, check_output_wrapper,
+};
 
 /// Placeholder for ensure_venv_ready function (from pyperformance or similar)
 /// This is not a standard Python built-in, so we provide a stub that returns dummy values

@@ -4,6 +4,7 @@
 //! system-specific parameters and functions. Uses generic traits for
 //! maximum flexibility and reusability.
 
+use crate::python_function;
 
 
 /// sys.executable - path to the Python executable (property)
@@ -55,29 +56,21 @@ pub static argv: std::sync::LazyLock<Vec<String>> = std::sync::LazyLock::new(|| 
     std::env::args().collect()
 });
 
-/// sys.exit - exit the program (generic function)
-/// 
-/// # Arguments
-/// * `code` - Exit status code (anything convertible to i32, or string message)
-/// 
-/// # Example
-/// ```rust
-/// use stdpython::sys;
-/// // sys::exit(0i32); // This would exit the program successfully
-/// // sys::exit(1u8);  // This would exit with error code 1
-/// // sys::exit("error message"); // This would exit with code 1
-/// ```
 #[cfg(feature = "std")]
-pub fn exit<T>(code: T) -> ! 
-where
-    T: Into<ExitCode>,
-{
-    let exit_code = code.into();
-    match exit_code {
-        ExitCode::Code(c) => std::process::exit(c),
-        ExitCode::Message(msg) => {
-            eprintln!("{}", msg);
-            std::process::exit(1);
+python_function! {
+    /// sys.exit - exit the program
+    pub fn exit<T>(code: T) -> !
+    where [T: Into<ExitCode>]
+    [signature: (code)]
+    [concrete_types: (i32) -> !]
+    {
+        let exit_code = code.into();
+        match exit_code {
+            ExitCode::Code(c) => std::process::exit(c),
+            ExitCode::Message(msg) => {
+                eprintln!("{}", msg);
+                std::process::exit(1);
+            }
         }
     }
 }
@@ -143,70 +136,77 @@ where
     panic!("sys.exit called with code: {}", code);
 }
 
-/// sys.platform - platform identifier
-/// 
-/// Returns a string identifying the platform on which Python is running.
-pub fn platform() -> &'static str {
-    if cfg!(target_os = "windows") {
-        "win32"
-    } else if cfg!(target_os = "macos") {
-        "darwin"
-    } else if cfg!(target_os = "linux") {
-        "linux"
-    } else if cfg!(unix) {
-        "unix"
-    } else {
-        "unknown"
+python_function! {
+    /// sys.platform - platform identifier
+    pub fn platform() -> &'static str
+    [signature: ()]
+    [concrete_types: () -> &'static str]
+    {
+        if cfg!(target_os = "windows") {
+            "win32"
+        } else if cfg!(target_os = "macos") {
+            "darwin"
+        } else if cfg!(target_os = "linux") {
+            "linux"
+        } else if cfg!(unix) {
+            "unix"
+        } else {
+            "unknown"
+        }
     }
 }
 
-/// sys.version - version information
-/// 
-/// Returns version information about the Python interpreter.
-/// Since this is compiled Python code, we return information about the Rust compiler.
-pub fn version() -> String {
-    format!("Python-to-Rust compiled code (rustc {})", 
-        option_env!("RUSTC_VERSION").unwrap_or("unknown"))
-}
-
-/// Generic helper: Get executable path as any string-like type
-/// 
-/// This allows callers to get the executable path in their preferred string format
-pub fn get_executable<T>() -> T
-where
-    T: From<String>,
-{
-    #[cfg(feature = "std")]
+python_function! {
+    /// sys.version - version information
+    pub fn version() -> String
+    [signature: ()]
+    [concrete_types: () -> String]
     {
-        T::from(executable.clone())
-    }
-    #[cfg(not(feature = "std"))]
-    {
-        T::from("python".to_string())
+        format!("Python-to-Rust compiled code (rustc {})", 
+            option_env!("RUSTC_VERSION").unwrap_or("unknown"))
     }
 }
 
-/// Generic helper: Get command line arguments as any collection type
-/// 
-/// This allows callers to get argv in their preferred collection format
-pub fn get_argv<T>() -> T
-where
-    T: FromIterator<String>,
-{
-    #[cfg(feature = "std")]
+python_function! {
+    /// Generic helper: Get executable path
+    pub fn get_executable() -> String
+    [signature: ()]
+    [concrete_types: () -> String]
     {
-        argv.iter().cloned().collect()
-    }
-    #[cfg(not(feature = "std"))]
-    {
-        vec!["python".to_string()].into_iter().collect()
+        #[cfg(feature = "std")]
+        {
+            executable.clone()
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            "python".to_string()
+        }
     }
 }
 
-/// Generic helper: Get platform identifier as any string-like type
-pub fn get_platform<T>() -> T
-where
-    T: From<&'static str>,
-{
-    T::from(platform())
+python_function! {
+    /// Generic helper: Get command line arguments
+    pub fn get_argv() -> Vec<String>
+    [signature: ()]
+    [concrete_types: () -> Vec<String>]
+    {
+        #[cfg(feature = "std")]
+        {
+            argv.iter().cloned().collect()
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            vec!["python".to_string()]
+        }
+    }
+}
+
+python_function! {
+    /// Generic helper: Get platform identifier
+    pub fn get_platform() -> &'static str
+    [signature: ()]
+    [concrete_types: () -> &'static str]
+    {
+        platform()
+    }
 }

@@ -4,6 +4,7 @@
 //! Implementation matches Python's json module API.
 
 use crate::PyException;
+use crate::python_function;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -625,29 +626,52 @@ impl JSONParser {
 }
 
 // Module-level functions (Python API)
-/// json.loads - deserialize JSON string
-pub fn loads<S: AsRef<str>>(s: S) -> Result<JSONValue, PyException> {
-    JSONDecoder::new().decode(s)
+python_function! {
+    /// json.loads - deserialize JSON string
+    pub fn loads<S>(s: S) -> Result<JSONValue, PyException>
+    where [S: AsRef<str>]
+    [signature: (s)]
+    [concrete_types: (String) -> Result<JSONValue, crate::PyException>]
+    {
+        JSONDecoder::new().decode(s)
+    }
 }
 
-/// json.dumps - serialize object to JSON string
-pub fn dumps(obj: &JSONValue, indent: Option<usize>) -> String {
-    let encoder = JSONEncoder::with_options(false, true, true, true, false, indent, None);
-    encoder.encode(obj)
+python_function! {
+    /// json.dumps - serialize object to JSON string
+    pub fn dumps(obj: &JSONValue, indent: Option<usize>) -> String
+    [signature: (obj, indent=None)]
+    [concrete_types: (&JSONValue, Option<usize>) -> String]
+    {
+        let encoder = JSONEncoder::with_options(false, true, true, true, false, indent, None);
+        encoder.encode(obj)
+    }
 }
 
-/// json.dump - serialize object to JSON and write to file
 #[cfg(feature = "std")]
-pub fn dump<P: AsRef<std::path::Path>>(obj: &JSONValue, fp: P) -> Result<(), PyException> {
-    let json_str = dumps(obj, None);
-    std::fs::write(fp, json_str).map_err(|e| crate::runtime_error(format!("Failed to write JSON: {}", e)))
+python_function! {
+    /// json.dump - serialize object to JSON and write to file
+    pub fn dump<P>(obj: &JSONValue, fp: P) -> Result<(), PyException>
+    where [P: AsRef<std::path::Path>]
+    [signature: (obj, fp)]
+    [concrete_types: (&JSONValue, String) -> Result<(), crate::PyException>]
+    {
+        let json_str = dumps(obj, None);
+        std::fs::write(fp, json_str).map_err(|e| crate::runtime_error(format!("Failed to write JSON: {}", e)))
+    }
 }
 
-/// json.load - deserialize JSON from file
 #[cfg(feature = "std")]
-pub fn load<P: AsRef<std::path::Path>>(fp: P) -> Result<JSONValue, PyException> {
-    let content = std::fs::read_to_string(fp).map_err(|e| crate::runtime_error(format!("Failed to read JSON: {}", e)))?;
-    loads(content)
+python_function! {
+    /// json.load - deserialize JSON from file
+    pub fn load<P>(fp: P) -> Result<JSONValue, PyException>
+    where [P: AsRef<std::path::Path>]
+    [signature: (fp)]
+    [concrete_types: (String) -> Result<JSONValue, crate::PyException>]
+    {
+        let content = std::fs::read_to_string(fp).map_err(|e| crate::runtime_error(format!("Failed to read JSON: {}", e)))?;
+        loads(content)
+    }
 }
 
 // Helper functions

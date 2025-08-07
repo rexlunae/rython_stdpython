@@ -3,7 +3,7 @@
 //! This module provides specialized container datatypes.
 //! Implementation matches Python's collections module API.
 
-use crate::{PyException, Len, Truthy};
+use crate::{PyException, Len, Truthy, python_function};
 use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
 
@@ -711,36 +711,44 @@ where
 }
 
 // Convenience functions
-/// Create counter from iterable
-pub fn counter<T, I>(iterable: I) -> Counter<T> 
-where 
-    T: Hash + Eq + Clone + std::fmt::Debug,
-    I: IntoIterator<Item = T>,
-{
-    Counter::from_iter(iterable)
+python_function! {
+    /// Create counter from iterable
+    pub fn counter<I>(iterable: I) -> Counter<String>
+    where [I: IntoIterator<Item = String>]
+    [signature: (iterable)]
+    [concrete_types: (Vec<String>) -> Counter<String>]
+    {
+        Counter::from_iter(iterable)
+    }
 }
 
-/// Create deque from iterable
-pub fn create_deque<T, I>(iterable: I, maxlen: Option<usize>) -> deque<T> 
-where 
-    I: IntoIterator<Item = T>,
-{
-    deque::from_iter(iterable, maxlen)
+python_function! {
+    /// Create deque from iterable
+    pub fn create_deque<I>(iterable: I, maxlen: Option<usize>) -> deque<String>
+    where [I: IntoIterator<Item = String>]
+    [signature: (iterable, maxlen=None)]
+    [concrete_types: (Vec<String>, Option<usize>) -> deque<String>]
+    {
+        deque::from_iter(iterable, maxlen)
+    }
 }
 
-/// Create defaultdict with int factory
-pub fn defaultdict_int<K>() -> defaultdict<K, i64> 
-where 
-    K: Hash + Eq + Clone,
-{
-    defaultdict::new(|| 0i64)
+python_function! {
+    /// Create defaultdict with int factory
+    pub fn defaultdict_int() -> defaultdict<String, i64>
+    [signature: ()]
+    [concrete_types: () -> defaultdict<String, i64>]
+    {
+        defaultdict::new(|| 0i64)
+    }
 }
 
-/// Create defaultdict with list factory
-pub fn defaultdict_list<K, T>() -> defaultdict<K, Vec<T>> 
-where 
-    K: Hash + Eq + Clone,
-    T: Clone,
-{
-    defaultdict::new(|| Vec::new())
+python_function! {
+    /// Create defaultdict with list factory
+    pub fn defaultdict_list() -> defaultdict<String, Vec<String>>
+    [signature: ()]
+    [concrete_types: () -> defaultdict<String, Vec<String>>]
+    {
+        defaultdict::new(|| Vec::new())
+    }
 }

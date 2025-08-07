@@ -6,28 +6,29 @@
 //! Note: This module is only available with the `std` feature enabled,
 //! as it requires operating system functionality.
 
-use crate::{PyException, AsStrLike, AsPathLike};
+use crate::{PyException, AsStrLike, AsPathLike, python_function};
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-/// os.execv - execute a program (generic version using traits)
-/// 
-/// # Arguments
-/// * `program` - Path to the program to execute (any string-like type)
-/// * `args` - Arguments to pass to the program (any collection of string-like types)
-/// 
-/// # Note
-/// This function replaces the current process with the new program.
-pub fn execv_mixed<P, A, S>(program: P, args: A) -> Result<(), PyException> 
-where
-    P: AsPathLike,
-    A: IntoIterator<Item = S>,
-    S: AsStrLike,
-{
-    // Convert to owned strings first to avoid lifetime issues
-    let owned_args: Vec<String> = args.into_iter().map(|s| s.as_str_like().to_string()).collect();
-    let str_args: Vec<&str> = owned_args.iter().map(|s| s.as_str()).collect();
-    execv(program.as_path_like(), str_args)
+python_function! {
+    /// os.execv - execute a program (generic version using traits)
+    /// 
+    /// # Arguments
+    /// * `program` - Path to the program to execute (any string-like type)
+    /// * `args` - Arguments to pass to the program (any collection of string-like types)
+    /// 
+    /// # Note
+    /// This function replaces the current process with the new program.
+    pub fn execv_mixed<P, A, S>(program: P, args: A) -> Result<(), PyException> 
+    where [P: AsPathLike, A: IntoIterator<Item = S>, S: AsStrLike]
+    [signature: (program, args)]
+    [concrete_types: (String, Vec<String>) -> Result<(), crate::PyException>]
+    {
+        // Convert to owned strings first to avoid lifetime issues
+        let owned_args: Vec<String> = args.into_iter().map(|s| s.as_str_like().to_string()).collect();
+        let str_args: Vec<&str> = owned_args.iter().map(|s| s.as_str()).collect();
+        execv(program.as_path_like(), str_args)
+    }
 }
 
 /// os.execv - execute a program
@@ -86,59 +87,52 @@ pub fn execv<P: AsRef<str>, A: AsRef<str>>(program: P, args: Vec<A>) -> Result<(
     }
 }
 
-/// os.getenv - get environment variable (generic version)
-/// 
-/// # Arguments
-/// * `key` - Environment variable name (any string-like type)
-/// 
-/// # Returns
-/// The value of the environment variable in the requested type, or None if not found
-pub fn getenv<K, R>(key: K) -> Option<R>
-where
-    K: AsStrLike,
-    R: From<String>,
-{
-    std::env::var(key.as_str_like()).ok().map(R::from)
-}
-
-/// os.setenv - set environment variable (generic version)
-/// 
-/// # Arguments
-/// * `key` - Environment variable name (any string-like type)
-/// * `value` - Environment variable value (any string-like type)
-pub fn setenv<K, V>(key: K, value: V)
-where
-    K: AsStrLike,
-    V: AsStrLike,
-{
-    unsafe {
-        std::env::set_var(key.as_str_like(), value.as_str_like());
+python_function! {
+    /// os.getenv - get environment variable
+    pub fn getenv<K>(key: K) -> Option<String>
+    where [K: AsStrLike]
+    [signature: (key)]
+    [concrete_types: (String) -> Option<String>]
+    {
+        std::env::var(key.as_str_like()).ok()
     }
 }
 
-/// os.getcwd - get current working directory (generic version)
-/// 
-/// # Returns
-/// The current working directory path in the requested type
-pub fn getcwd<R>() -> Result<R, PyException>
-where
-    R: From<String>,
-{
-    std::env::current_dir()
-        .map(|p| R::from(p.to_string_lossy().to_string()))
-        .map_err(|e| crate::runtime_error(&format!("Failed to get current directory: {}", e)))
+python_function! {
+    /// os.setenv - set environment variable
+    pub fn setenv<K, V>(key: K, value: V) -> ()
+    where [K: AsStrLike, V: AsStrLike]
+    [signature: (key, value)]
+    [concrete_types: (String, String) -> ()]
+    {
+        unsafe {
+            std::env::set_var(key.as_str_like(), value.as_str_like());
+        }
+    }
 }
 
-/// os.chdir - change current working directory (generic version)
-/// 
-/// # Arguments
-/// * `path` - New working directory path (any path-like type)
-pub fn chdir<P>(path: P) -> Result<(), PyException>
-where
-    P: AsPathLike,
-{
-    std::env::set_current_dir(path.as_path_like())
-        .map_err(|e| crate::runtime_error(&format!("Failed to change directory to {}: {}", path.as_path_like(), e)))
+python_function! {
+    /// os.getcwd - get current working directory
+    pub fn getcwd() -> Result<String, PyException>
+    [signature: ()]
+    [concrete_types: () -> Result<String, crate::PyException>]
+    {
+        std::env::current_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .map_err(|e| crate::runtime_error(&format!("Failed to get current directory: {}", e)))
+    }
+}
+
+python_function! {
+    /// os.chdir - change current working directory
+    pub fn chdir<P>(path: P) -> Result<(), PyException>
+    where [P: AsPathLike]
+    [signature: (path)]
+    [concrete_types: (String) -> Result<(), crate::PyException>]
+    {
+        std::env::set_current_dir(path.as_path_like())
+            .map_err(|e| crate::runtime_error(&format!("Failed to change directory to {}: {}", path.as_path_like(), e)))
+    }
 }
 
 /// os.environ - environment variables dictionary
@@ -170,74 +164,52 @@ pub mod path {
     //! This submodule provides path manipulation functions using Rust's std::path.
 
     use std::path::{Path, PathBuf};
-    use crate::{PyException, AsPathLike};
+    use crate::{PyException, AsPathLike, python_function};
     
     /// os.path.sep - path separator for the current platform
     pub static sep: &str = if cfg!(target_os = "windows") { "\\" } else { "/" };
 
-    /// os.path.dirname - return directory name of pathname (generic version)
-    /// 
-    /// # Arguments
-    /// * `path` - The path to get the directory name of (any path-like type)
-    /// 
-    /// # Returns
-    /// The directory portion of the path in the requested type
-    /// 
-    /// # Example
-    /// ```rust
-    /// use stdpython::os::path;
-    /// let result: String = path::dirname("/home/user/file.txt");
-    /// assert_eq!(result, "/home/user");
-    /// ```
-    pub fn dirname<P, R>(path: P) -> R
-    where
-        P: AsPathLike,
-        R: From<String>,
-    {
-        let dir = Path::new(path.as_path_like())
-            .parent()
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| ".".to_string());
-        R::from(dir)
-    }
-    
-    /// os.path.basename - return base name of pathname (generic version)
-    /// 
-    /// # Arguments
-    /// * `path` - The path to get the base name of (any path-like type)
-    /// 
-    /// # Returns
-    /// The base name portion of the path in the requested type
-    pub fn basename<P, R>(path: P) -> R
-    where
-        P: AsPathLike,
-        R: From<String>,
-    {
-        let name = Path::new(path.as_path_like())
-            .file_name()
-            .map(|name| name.to_string_lossy().to_string())
-            .unwrap_or_else(|| String::new());
-        R::from(name)
-    }
-    
-    /// os.path.join - join path components (generic version)
-    /// 
-    /// # Arguments
-    /// * `components` - Path components to join (any iterable of path-like types)
-    /// 
-    /// # Returns
-    /// The joined path in the requested type
-    pub fn join<I, P, R>(components: I) -> R
-    where
-        I: IntoIterator<Item = P>,
-        P: AsPathLike,
-        R: From<String>,
-    {
-        let mut path = PathBuf::new();
-        for component in components {
-            path.push(component.as_path_like());
+    python_function! {
+        /// os.path.dirname - return directory name of pathname
+        pub fn dirname<P>(path: P) -> String
+        where [P: AsPathLike]
+        [signature: (path)]
+        [concrete_types: (String) -> String]
+        {
+            Path::new(path.as_path_like())
+                .parent()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| ".".to_string())
         }
-        R::from(path.to_string_lossy().to_string())
+    }
+    
+    python_function! {
+        /// os.path.basename - return base name of pathname
+        pub fn basename<P>(path: P) -> String
+        where [P: AsPathLike]
+        [signature: (path)]
+        [concrete_types: (String) -> String]
+        {
+            Path::new(path.as_path_like())
+                .file_name()
+                .map(|name| name.to_string_lossy().to_string())
+                .unwrap_or_else(|| String::new())
+        }
+    }
+    
+    python_function! {
+        /// os.path.join - join path components
+        pub fn join<I, P>(components: I) -> String
+        where [I: IntoIterator<Item = P>, P: AsPathLike]
+        [signature: (components)]
+        [concrete_types: (Vec<String>) -> String]
+        {
+            let mut path = PathBuf::new();
+            for component in components {
+                path.push(component.as_path_like());
+            }
+            path.to_string_lossy().to_string()
+        }
     }
     
     /// os.path.join - variadic version for compatibility with Python's os.path.join
@@ -258,76 +230,70 @@ pub mod path {
         path.to_string_lossy().to_string()
     }
     
-    /// os.path.exists - check if path exists (generic version)
-    /// 
-    /// # Arguments
-    /// * `path` - Path to check (any path-like type)
-    /// 
-    /// # Returns
-    /// true if the path exists, false otherwise
-    pub fn exists<P>(path: P) -> bool
-    where
-        P: AsPathLike,
-    {
-        Path::new(path.as_path_like()).exists()
+    python_function! {
+        /// os.path.exists - check if path exists
+        pub fn exists<P>(path: P) -> bool
+        where [P: AsPathLike]
+        [signature: (path)]
+        [concrete_types: (String) -> bool]
+        {
+            Path::new(path.as_path_like()).exists()
+        }
     }
     
-    /// os.path.isfile - check if path is a regular file
-    /// 
-    /// # Arguments
-    /// * `path` - Path to check
-    /// 
-    /// # Returns
-    /// true if the path is a regular file, false otherwise
-    pub fn isfile<P: AsRef<str>>(path: P) -> bool {
-        Path::new(path.as_ref()).is_file()
+    python_function! {
+        /// os.path.isfile - check if path is a regular file
+        pub fn isfile<P>(path: P) -> bool
+        where [P: AsRef<str>]
+        [signature: (path)]
+        [concrete_types: (String) -> bool]
+        {
+            Path::new(path.as_ref()).is_file()
+        }
     }
     
-    /// os.path.isdir - check if path is a directory
-    /// 
-    /// # Arguments
-    /// * `path` - Path to check
-    /// 
-    /// # Returns
-    /// true if the path is a directory, false otherwise
-    pub fn isdir<P: AsRef<str>>(path: P) -> bool {
-        Path::new(path.as_ref()).is_dir()
+    python_function! {
+        /// os.path.isdir - check if path is a directory
+        pub fn isdir<P>(path: P) -> bool
+        where [P: AsRef<str>]
+        [signature: (path)]
+        [concrete_types: (String) -> bool]
+        {
+            Path::new(path.as_ref()).is_dir()
+        }
     }
     
-    /// os.path.abspath - return absolute path
-    /// 
-    /// # Arguments
-    /// * `path` - Path to make absolute
-    /// 
-    /// # Returns
-    /// The absolute path
-    pub fn abspath<P: AsRef<str>>(path: P) -> Result<String, PyException> {
-        std::fs::canonicalize(path.as_ref())
-            .map(|p| p.to_string_lossy().to_string())
-            .map_err(|e| crate::runtime_error(format!("Failed to get absolute path for {}: {}", path.as_ref(), e)))
+    python_function! {
+        /// os.path.abspath - return absolute path
+        pub fn abspath<P>(path: P) -> Result<String, PyException>
+        where [P: AsRef<str>]
+        [signature: (path)]
+        [concrete_types: (String) -> Result<String, crate::PyException>]
+        {
+            std::fs::canonicalize(path.as_ref())
+                .map(|p| p.to_string_lossy().to_string())
+                .map_err(|e| crate::runtime_error(format!("Failed to get absolute path for {}: {}", path.as_ref(), e)))
+        }
     }
     
-    /// os.path.relpath - return relative path
-    /// 
-    /// # Arguments
-    /// * `path` - Path to make relative
-    /// * `start` - Start directory for relative path calculation (optional)
-    /// 
-    /// # Returns
-    /// The relative path
-    pub fn relpath<P: AsRef<str>>(path: P, start: Option<&str>) -> Result<String, PyException> {
-        let path_buf = Path::new(path.as_ref());
-        let start_path = match start {
-            Some(s) => Path::new(s),
-            None => Path::new("."),
-        };
-        
-        match path_buf.strip_prefix(start_path) {
-            Ok(relative) => Ok(relative.to_string_lossy().to_string()),
-            Err(_) => {
-                // If stripping prefix fails, try to calculate relative path manually
-                // This is a simplified version - a full implementation would handle more cases
-                Ok(path.as_ref().to_string())
+    python_function! {
+        /// os.path.relpath - return relative path
+        pub fn relpath<P>(path: P, start: Option<String>) -> Result<String, PyException>
+        where [P: AsRef<str>]
+        [signature: (path, start=None)]
+        [concrete_types: (String, Option<String>) -> Result<String, crate::PyException>]
+        {
+            let path_buf = Path::new(path.as_ref());
+            let start_string = start.unwrap_or_else(|| ".".to_string());
+            let start_path = Path::new(&start_string);
+            
+            match path_buf.strip_prefix(start_path) {
+                Ok(relative) => Ok(relative.to_string_lossy().to_string()),
+                Err(_) => {
+                    // If stripping prefix fails, try to calculate relative path manually
+                    // This is a simplified version - a full implementation would handle more cases
+                    Ok(path.as_ref().to_string())
+                }
             }
         }
     }

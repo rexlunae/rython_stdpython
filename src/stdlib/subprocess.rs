@@ -8,7 +8,7 @@
 
 use std::process::Command;
 use std::collections::HashMap;
-use crate::{PyException, AsStrLike, AsPathLike, AsEnvLike};
+use crate::{PyException, AsStrLike, AsPathLike, AsEnvLike, python_function};
 
 /// Result of a subprocess run
 /// 
@@ -69,25 +69,16 @@ where
     run_with_env_str(str_args, str_cwd, None)
 }
 
-/// subprocess.run - run a command
-/// 
-/// # Arguments
-/// * `args` - Command and arguments to run
-/// * `cwd` - Working directory for the command (optional)
-/// 
-/// # Returns
-/// A CompletedProcess instance with the result
-/// 
-/// # Example
-/// ```rust
-/// use stdpython::subprocess;
-/// let result = subprocess::run(vec!["echo", "hello"], None::<&str>);
-/// // result.returncode should be 0 for success
-/// ```
-pub fn run<A: AsRef<str>, C: AsRef<str>>(args: Vec<A>, cwd: Option<C>) -> Result<CompletedProcess, PyException> {
-    let str_args: Vec<&str> = args.iter().map(|a| a.as_ref()).collect();
-    let str_cwd = cwd.as_ref().map(|c| c.as_ref());
-    run_with_env_str(str_args, str_cwd, None)
+python_function! {
+    /// subprocess.run - run a command
+    pub fn run(args: Vec<String>, cwd: Option<String>) -> Result<CompletedProcess, PyException>
+    [signature: (args, cwd=None)]
+    [concrete_types: (Vec<String>, Option<String>) -> Result<CompletedProcess, crate::PyException>]
+    {
+        let str_args: Vec<&str> = args.iter().map(|a| a.as_ref()).collect();
+        let str_cwd = cwd.as_ref().map(|c| c.as_ref());
+        run_with_env_str(str_args, str_cwd, None)
+    }
 }
 
 /// subprocess.run with environment variables - run a command with custom environment (generic)
@@ -245,48 +236,45 @@ where
     Ok(result.returncode)
 }
 
-/// subprocess.call - run command and return exit code
-/// 
-/// # Arguments
-/// * `args` - Command and arguments to run
-/// 
-/// # Returns
-/// The exit code of the process
-pub fn call<A: AsRef<str>>(args: Vec<A>) -> Result<i32, PyException> {
-    let result = run(args, None::<&str>)?;
-    Ok(result.returncode)
+python_function! {
+    /// subprocess.call - run command and return exit code
+    pub fn call(args: Vec<String>) -> Result<i32, PyException>
+    [signature: (args)]
+    [concrete_types: (Vec<String>) -> Result<i32, crate::PyException>]
+    {
+        let result = run(args, None)?;
+        Ok(result.returncode)
+    }
 }
 
-/// subprocess.check_call - run command and check that it succeeds
-/// 
-/// # Arguments
-/// * `args` - Command and arguments to run
-/// 
-/// # Returns
-/// Nothing if successful, raises exception if process fails
-pub fn check_call<A: AsRef<str> + Clone>(args: Vec<A>) -> Result<(), PyException> {
-    let result = run(args.clone(), None::<&str>)?;
-    if result.returncode != 0 {
-        let cmd = args.iter().map(|a| a.as_ref()).collect::<Vec<&str>>().join(" ");
-        return Err(crate::runtime_error(format!("Command '{}' failed with exit code {}", cmd, result.returncode)));
+python_function! {
+    /// subprocess.check_call - run command and check that it succeeds
+    pub fn check_call(args: Vec<String>) -> Result<(), PyException>
+    [signature: (args)]
+    [concrete_types: (Vec<String>) -> Result<(), crate::PyException>]
+    {
+        let result = run(args.clone(), None)?;
+        if result.returncode != 0 {
+            let cmd = args.iter().map(|a| a.as_ref()).collect::<Vec<&str>>().join(" ");
+            return Err(crate::runtime_error(format!("Command '{}' failed with exit code {}", cmd, result.returncode)));
+        }
+        Ok(())
     }
-    Ok(())
 }
 
-/// subprocess.check_output - run command and return output
-/// 
-/// # Arguments
-/// * `args` - Command and arguments to run
-/// 
-/// # Returns
-/// The stdout of the process as a string
-pub fn check_output<A: AsRef<str> + Clone>(args: Vec<A>) -> Result<String, PyException> {
-    let result = run_with_output(args.clone(), None::<&str>, true)?;
-    if result.returncode != 0 {
-        let cmd = args.iter().map(|a| a.as_ref()).collect::<Vec<&str>>().join(" ");
-        return Err(crate::runtime_error(format!("Command '{}' failed with exit code {}", cmd, result.returncode)));
+python_function! {
+    /// subprocess.check_output - run command and return output
+    pub fn check_output(args: Vec<String>) -> Result<String, PyException>
+    [signature: (args)]
+    [concrete_types: (Vec<String>) -> Result<String, crate::PyException>]
+    {
+        let result = run_with_output(args.clone(), None::<String>, true)?;
+        if result.returncode != 0 {
+            let cmd = args.iter().map(|a| a.as_ref()).collect::<Vec<&str>>().join(" ");
+            return Err(crate::runtime_error(format!("Command '{}' failed with exit code {}", cmd, result.returncode)));
+        }
+        Ok(result.stdout.unwrap_or_default())
     }
-    Ok(result.stdout.unwrap_or_default())
 }
 
 // Compatibility aliases for generated code
